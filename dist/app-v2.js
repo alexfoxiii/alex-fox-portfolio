@@ -101,6 +101,17 @@
     }));
   });
 
+  function visualProjectMarkup(project) {
+    if (!project) return;
+    const title = project.href
+      ? `<a class="project-title-link" href="${escapeHtml(project.href)}">${escapeHtml(project.title)}</a>`
+      : `<span class="project-title-link is-disabled" aria-disabled="true">${escapeHtml(project.title)}</span>`;
+    const left = document.querySelector("[data-visual-meta-left]");
+    const right = document.querySelector("[data-visual-meta-right]");
+    if (left) left.innerHTML = `${title}<small>${escapeHtml(project.category)}</small>`;
+    if (right) right.innerHTML = `<span>${escapeHtml(project.year)}</span><small>${escapeHtml(project.role)}</small>`;
+  }
+
   function initSlider({ items, track, prev, next, count, dots }) {
     if (!track || !items.length) return;
     let index = 0;
@@ -122,7 +133,10 @@
     track.tabIndex = 0;
   }
 
-  if (page === "home") initSlider({ items: data.visualSlides, track: document.querySelector("[data-visual-track]"), prev: document.querySelector("[data-visual-prev]"), next: document.querySelector("[data-visual-next]"), count: document.querySelector("[data-visual-count]") });
+  if (page === "home") {
+    visualProjectMarkup(data.projects.find((project) => project.slug === data.visualProjectSlug));
+    initSlider({ items: data.visualSlides, track: document.querySelector("[data-visual-track]"), prev: document.querySelector("[data-visual-prev]"), next: document.querySelector("[data-visual-next]"), count: document.querySelector("[data-visual-count]") });
+  }
 
   if (page === "about") {
     const list = (items, withYear) => items.map((item) => `<div class="resume-row"><div><strong>${item[0]}</strong><small>${item[1]}</small></div>${withYear ? `<time>${item[2]}</time>` : ""}</div>`).join("");

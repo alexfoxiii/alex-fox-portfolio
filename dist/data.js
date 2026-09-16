@@ -1,5 +1,6 @@
 window.PORTFOLIO_DATA = {
   heroProjects: ["Samolet", "Yandex", "T1", "Innotech"],
+  visualProjectSlug: "samolet",
   visualSlides: [
     { src: "assets/samolet-cover.png", alt: "Samoletum campaign poster" },
     { src: "assets/samolet-detail-1.png", alt: "Samoletum campaign detail" },

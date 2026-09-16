@@ -434,11 +434,11 @@ a.project-more:hover { color: var(--ink); }
   left: 17.92%;
   bottom: 81px;
   display: flex;
-  gap: 7px;
+  gap: 4px;
 }
 .project-panel-dots i {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #d1d1d1;
 }

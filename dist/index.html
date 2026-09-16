@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alex Fox III — Creative Director</title>
+  <meta name="description" content="Portfolio of Aleksandr Lisovskiy — creative and art director focused on brand systems, digital products and team building.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='32' rx='27' ry='20' fill='none' stroke='%23757575' stroke-width='4'/%3E%3Ctext x='32' y='29' text-anchor='middle' font-family='Arial' font-size='13' font-weight='700' fill='%23757575'%3EALEX%3C/text%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-size='13' font-weight='700' fill='%23757575'%3EFOXIII%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="data.js" defer></script>
+  <script src="app-v2.js" defer></script>
+</head>
+<body data-page="home">
+  <header class="site-header" data-site-header></header>
+  <main>
+    <section class="hero section-light" id="top" data-header-theme="muted">
+      <nav class="project-nav hero-projects" aria-label="Selected projects" data-hero-projects></nav>
+      <div class="hero-name">aleksandr<br>lisovskiy</div>
+      <div class="hero-availability">available<br>for full-time projects<br>and collaborations</div>
+      <div class="hero-copy">
+        <h1>Award winning Creative director focused on brand systems, digital products and team building.</h1>
+        <p>I help companies turn complex products into clear visual identities and scalable design systems.</p>
+        <a href="about.html" class="quiet-link">more about me</a>
+      </div>
+      <div class="brand-mark" aria-label="Alex Fox III"><span>alex<br>foxiii</span></div>
+      <a class="scroll-cue" href="#visual-project">
+        <span>projects</span>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5"/></svg>
+      </a>
+    </section>
+
+    <section class="visual-slider section-dark" id="visual-project" data-header-theme="light" aria-label="Samoletum project gallery">
+      <div class="visual-track" data-visual-track></div>
+      <div class="slider-meta slider-meta-left">
+        <a class="project-title-link is-disabled" aria-disabled="true"><span>Samoletum</span></a>
+        <small>Brand identity &amp; visual system</small>
+      </div>
+      <div class="slider-meta slider-meta-right"><span>2023</span><small>Lead-designer</small></div>
+      <div class="edge-label edge-label-left">project</div>
+      <div class="edge-label edge-label-right">date<br>&amp; role</div>
+      <div class="slider-controls visual-controls">
+        <button type="button" data-visual-prev aria-label="Previous slide">←</button>
+        <span data-visual-count>01 / 03</span>
+        <button type="button" data-visual-next aria-label="Next slide">→</button>
+      </div>
+    </section>
+
+    <section class="project-stack home-project-stack" id="projects" data-project-stack="home" aria-label="Selected projects"></section>
+
+    <section class="contact-section section-light" id="contacts" data-header-theme="muted"></section>
+  </main>
+</body>
+</html>

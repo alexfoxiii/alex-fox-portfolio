@@ -13,17 +13,20 @@ window.PORTFOLIO_DATA = {
       category: "UX/UI & visual system",
       year: "2020",
       role: "Senior-designer",
+      detailRole: "Senior UX/UI Designer",
       team: ["Designer", "Illustrator"],
       description: "A major product update during crisis and a company-wide restructuring.",
+      descriptionLines: ["A major product update", "during crisis and a company-", "wide restructuring."],
       color: "#ffcc00",
       image: "assets/yandex-project-v2.png",
+      slides: ["assets/yandex-project-v2.png", "assets/yandex-gallery-1.png", "assets/yandex-gallery-2.png"],
       imageFit: "contain",
       href: "project.html",
       tags: ["ux/ui", "branding"],
       achievements: [
         ["4x", "faster delivery\n12 months → 3 months"],
-        ["+13 pp", "of knowledge retention benchmark due to designed card mechanics around active recall and repeated exposure"],
-        ["~30%", "fewer design-dependent requests after introducing a more efficient workflow"]
+        ["+13 pp", "of knowledge retention benchmark due to designed card mechanics around active recall and repeated exposure — approaches associated with stronger long-term retention in controlled studies"],
+        ["~30%", "fewer design-dependent requests after introducing a more efficient workflow by adapting Yandex’s internal visual library instead of producing every asset from scratch"]
       ]
     },
     {
@@ -83,6 +86,7 @@ window.PORTFOLIO_DATA = {
       description: "A broad visual system for an education product, designed to remain bright, direct and recognisable across formats.",
       color: "#117df5",
       image: "assets/samolet-cover.png",
+      slides: ["assets/samolet-cover.png", "assets/samolet-detail-1.png", "assets/samolet-detail-2.png"],
       imageFit: "contain",
       href: null,
       tags: ["branding"]

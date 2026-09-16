@@ -15,7 +15,7 @@
   function contactMarkup(projectCopy) {
     const c = data.contact;
     return `
-      <div class="brand-mark"><span>alex<br>foxiii</span></div>
+      <div class="brand-mark"><img src="assets/logo.svg" alt="Alex Fox III"></div>
       <div class="contact-copy">
         <h2>${projectCopy ? '<span>Did you like the project?<br>Let’s make yours even better.</span> Reach out via any of the channels below' : "Have a project, team or collaboration in mind?<br>Let's talk"}</h2>
         <div class="contact-direct"><a href="${c.phoneHref}">${c.phone}</a><a href="${c.emailHref}">${c.email}</a></div>
@@ -26,19 +26,21 @@
   }
 
   function projectNavMarkup(items, active, options = {}) {
-    const { includeMore = true, scrollTarget = false } = options;
+    const { includeMore = true, selectable = false } = options;
     return items.map((item) => {
       const name = typeof item === "string" ? item : item.title;
       const slug = typeof item === "string" ? item.toLowerCase() : item.slug;
-      return `<button type="button" class="${slug === active ? "is-active" : ""}" ${scrollTarget ? "data-scroll-project" : "data-project-name"}="${escapeHtml(slug)}">${escapeHtml(name)}</button>`;
-    }).join("") + (includeMore ? '<span class="more-projects">more projects</span>' : "");
+      return `<button type="button" class="${slug === active ? "is-active" : ""}" ${selectable ? "data-select-project" : "data-project-name"}="${escapeHtml(slug)}">${escapeHtml(name)}</button>`;
+    }).join("") + (includeMore ? '<a class="more-projects" href="projects.html">more projects</a>' : "");
   }
 
-  function projectPanelMarkup(project, index) {
-    const role = project.role && project.role !== "—" ? project.role : "case in progress";
+  function projectPanelMarkup(project, options = {}) {
+    const { context = "home", navItems = data.projects } = options;
+    const role = project.detailRole || (project.role && project.role !== "—" ? project.role : "case in progress");
     const team = project.team?.length ? project.team.map(escapeHtml).join("<br>") : "—";
-    const image = project.image ? `
-      <img class="project-panel-image project-panel-image-${escapeHtml(project.imageFit || "contain")}" src="${escapeHtml(project.image)}?v=2" alt="${escapeHtml(project.title)} project visual" data-project-asset>
+    const slides = project.slides?.length ? project.slides : (project.image ? [project.image] : []);
+    const image = slides.length ? `
+      <img class="project-panel-image project-panel-image-${escapeHtml(project.imageFit || "contain")}" src="${escapeHtml(slides[0])}?v=2" alt="${escapeHtml(project.title)} project visual" data-project-asset>
       <span class="project-asset-fallback" aria-hidden="true">${escapeHtml(project.title)}</span>`
       : `<span class="project-panel-placeholder">${escapeHtml(project.title)}</span>`;
     const action = project.href
@@ -48,37 +50,82 @@
       <div class="project-achievements">
         ${project.achievements.map(([value, label]) => `<div><strong>${escapeHtml(value)}</strong><p>${escapeHtml(label).replace(/\n/g, "<br>")}</p></div>`).join("")}
       </div>` : "";
+    const description = project.descriptionLines?.length
+      ? `<span aria-hidden="true">${project.descriptionLines.map(escapeHtml).join("<br>")}</span>`
+      : escapeHtml(project.description);
+
+    const meta = `<div><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.category)}</small></div><div><strong>${escapeHtml(project.year)}</strong><small>${escapeHtml(project.role)}</small></div>`;
 
     return `
-      <article class="project-panel" id="project-${escapeHtml(project.slug)}" data-header-theme="dark" style="--panel-color:${escapeHtml(project.color)};--stack-index:${index + 1}">
+      <article class="project-panel" id="project-${escapeHtml(project.slug)}" data-header-theme="muted" style="--panel-color:${escapeHtml(project.color)}">
+        <div class="project-panel-meta project-panel-meta-base" aria-hidden="true">${meta}</div>
         <div class="project-panel-nav-wrap">
-          <nav class="project-nav project-panel-nav" aria-label="Projects">${projectNavMarkup(data.projects, project.slug, { includeMore: false, scrollTarget: true })}</nav>
-          <p class="project-scroll-hint">scroll down or click</p>
+          <nav class="project-nav project-panel-nav" aria-label="Projects">${projectNavMarkup(navItems, project.slug, { includeMore: false, selectable: true })}</nav>
+          <p class="project-scroll-hint">click to switch project</p>
         </div>
-        <div class="project-filters">${project.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
+        ${context === "projects" ? `<div class="project-filters" aria-label="Filter projects">
+          ${["ux/ui", "branding"].map((tag) => `<button type="button" data-project-filter="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}
+        </div>` : ""}
         <div class="project-panel-copy">
-          <h2>${escapeHtml(project.description)}</h2>
+          <h2 ${project.descriptionLines?.length ? `aria-label="${escapeHtml(project.description)}"` : ""}>${description}</h2>
           ${action}
           <div class="project-specs"><div><small>role</small><p>${escapeHtml(role)}</p></div><div><small>team</small><p>${team}</p></div></div>
+          ${achievements ? '<small class="achievements-label">achievements</small>' : ""}
           ${achievements}
         </div>
-        <div class="project-panel-dots" aria-hidden="true">${[0, 1, 2, 3].map((dot) => `<i class="${dot === index % 4 ? "is-active" : ""}"></i>`).join("")}</div>
+        ${slides.length > 1 ? `<div class="project-panel-dots" aria-label="Project images">${slides.map((_, index) => `<button type="button" class="${index === 0 ? "is-active" : ""}" data-panel-slide="${index}" aria-label="Show project image ${index + 1}"></button>`).join("")}</div>` : ""}
         <a class="project-panel-art ${project.href ? "" : "is-disabled"}" href="${escapeHtml(project.href || "#")}" aria-label="${project.href ? `Open ${escapeHtml(project.title)} case study` : `${escapeHtml(project.title)} case study is not published yet`}">
-          <div class="project-panel-meta"><div><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.category)}</small></div><div><strong>${escapeHtml(project.year)}</strong><small>${escapeHtml(project.role)}</small></div></div>
+          <div class="project-panel-meta">${meta}</div>
           ${image}
         </a>
       </article>`;
   }
 
   document.querySelector("[data-site-header]").innerHTML = headerMarkup();
-  document.querySelectorAll("[data-project-stack]").forEach((root) => { root.innerHTML = data.projects.map(projectPanelMarkup).join(""); });
+  document.querySelectorAll("[data-project-stack]").forEach((root) => {
+    const context = root.dataset.projectStack === "full" ? "projects" : "home";
+    let filter = "all";
+    let activeSlug = data.projects[0].slug;
+
+    const render = () => {
+      const visible = filter === "all" ? data.projects : data.projects.filter((project) => project.tags.includes(filter));
+      if (!visible.some((project) => project.slug === activeSlug)) activeSlug = visible[0]?.slug;
+      const project = visible.find((item) => item.slug === activeSlug) || visible[0];
+      if (!project) return;
+      root.innerHTML = projectPanelMarkup(project, { context, navItems: visible });
+      root.querySelectorAll("[data-project-filter]").forEach((button) => button.classList.toggle("is-active", filter !== "all" && button.dataset.projectFilter === filter));
+    };
+
+    root.addEventListener("click", (event) => {
+      const projectButton = event.target.closest("[data-select-project]");
+      if (projectButton) {
+        activeSlug = projectButton.dataset.selectProject;
+        render();
+        return;
+      }
+      const filterButton = event.target.closest("[data-project-filter]");
+      if (filterButton) {
+        filter = filter === filterButton.dataset.projectFilter ? "all" : filterButton.dataset.projectFilter;
+        render();
+        return;
+      }
+      const dot = event.target.closest("[data-panel-slide]");
+      if (dot) {
+        event.preventDefault();
+        const project = data.projects.find((item) => item.slug === activeSlug);
+        const slides = project?.slides || [];
+        const image = root.querySelector("[data-project-asset]");
+        if (image && slides[Number(dot.dataset.panelSlide)]) image.src = `${slides[Number(dot.dataset.panelSlide)]}?v=2`;
+        root.querySelectorAll("[data-panel-slide]").forEach((button) => button.classList.toggle("is-active", button === dot));
+      }
+    });
+    render();
+  });
   document.querySelectorAll(".contact-section").forEach((node) => { node.innerHTML = contactMarkup(node.classList.contains("project-contact")); });
 
   document.addEventListener("click", (event) => {
     const disabled = event.target.closest("a.is-disabled");
     if (disabled) event.preventDefault();
-    const button = event.target.closest("[data-scroll-project]");
-    if (button) button.closest("[data-project-stack]")?.querySelector(`#project-${CSS.escape(button.dataset.scrollProject)}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   document.addEventListener("error", (event) => {
     if (event.target.matches?.("img[data-project-asset]")) event.target.closest(".project-panel-art")?.classList.add("has-asset-error");
@@ -97,7 +144,9 @@
   document.querySelectorAll("[data-hero-projects]").forEach((nav) => {
     nav.innerHTML = projectNavMarkup(data.heroProjects);
     nav.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
-      document.querySelector(`#project-${CSS.escape(button.dataset.projectName)}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const stack = document.querySelector("[data-project-stack]");
+      stack?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => stack?.querySelector(`[data-select-project="${CSS.escape(button.dataset.projectName)}"]`)?.click(), 300);
     }));
   });
 

@@ -1120,7 +1120,7 @@ a.project-more:hover { color: var(--ink); }
   .metrics-stacked p { max-width: 34ch; }
   .project-panel-copy .achievements-label, .metrics-label { position: static; margin: 58px 0 24px; }
   .project-panel-copy .project-achievements, .case-metrics { position: static; margin: 0; row-gap: 48px; }
-  .project-panel-copy .project-more { position: static; order: 0; margin-top: 0; }
+  .project-panel-copy .project-more { position: static; margin-top: auto; padding-top: 48px; flex-shrink: 0; }
   .project-filters { bottom: 26px; max-width: calc(var(--column) - 12px); flex-wrap: wrap; }
   .project-panel-meta-base { display: none; }
   .projects-page-stack .project-panel-art { height: calc(100svh - 115px); }

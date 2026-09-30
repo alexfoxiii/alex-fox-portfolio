@@ -23,7 +23,7 @@
     if (!panel || window.matchMedia("(max-width: 850px)").matches) return;
     const copy = panel.querySelector(".project-panel-copy");
     const hint = panel.querySelector(".project-scroll-hint");
-    const summary = copy.querySelector(".project-more") || copy.querySelector(".project-panel-summary") || copy.querySelector("h2");
+    const summary = copy.querySelector(".project-panel-summary") || copy.querySelector("h2");
     const summaryHeight = summary.getBoundingClientRect().bottom - copy.getBoundingClientRect().top + copy.scrollTop;
     const copyTop = copy.offsetTop;
     const navBottom = panel.querySelector(".project-panel-nav").getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
@@ -127,8 +127,8 @@
       </div>` : "";
     const description = escapeHtml(project.description);
     const panelCopy = context === "projects"
-      ? `<h2 class="project-panel-title">${titleMarkup(project.caseTitle || project.title)}</h2><p class="project-panel-summary">${escapeHtml(project.description)}</p>${action}`
-      : `<h2 ${project.descriptionLines?.length ? `aria-label="${escapeHtml(project.description)}"` : ""}>${description}</h2>${action}`;
+      ? `<h2 class="project-panel-title">${titleMarkup(project.caseTitle || project.title)}</h2><p class="project-panel-summary">${escapeHtml(project.description)}</p>`
+      : `<h2 ${project.descriptionLines?.length ? `aria-label="${escapeHtml(project.description)}"` : ""}>${description}</h2>`;
 
     const meta = `<div><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.category)}</small></div><div><strong>${escapeHtml(project.year)}</strong><small>${escapeHtml(project.role)}</small></div>`;
     const artTag = project.href ? "a" : "div";
@@ -149,6 +149,7 @@
           <div class="project-specs"><div><small>role</small><p>${escapeHtml(role).replace(/\n/g, "<br>")}</p></div><div><small>team</small><p>${team}</p></div></div>
           ${achievements ? '<small class="achievements-label">achievements</small>' : ""}
           ${achievements}
+          ${action}
         </div>
         <${artTag} class="project-panel-art ${project.href ? "" : "is-disabled"}" ${artAttributes}>
           <div class="project-panel-meta">${meta}</div>

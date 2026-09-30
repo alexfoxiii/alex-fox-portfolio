@@ -1,5 +1,6 @@
 window.PORTFOLIO_DATA = {
   heroProjects: ["Samolet", "Yandex", "T1", "Innotech"],
+  homePanelProjectSlugs: ["everypin", "sibur", "innotech", "samolet", "yandex", "t1"],
   visualProjectSlug: "samolet",
   visualSlides: [
     { src: "assets/samolet-cover.png", alt: "Samoletum campaign poster" },
@@ -10,6 +11,7 @@ window.PORTFOLIO_DATA = {
     {
       slug: "yandex",
       title: "Yandex",
+      caseTitle: "Yandex.Education",
       category: "UX/UI & visual system",
       year: "2020",
       role: "Senior-designer",
@@ -189,9 +191,9 @@ window.PORTFOLIO_DATA = {
     email: "aleksanderfoxiii@gmail.com",
     emailHref: "mailto:aleksanderfoxiii@gmail.com",
     socials: [
-      ["linkedin", "#"],
-      ["tg", "#"],
-      ["mydesignchanel", "#"]
+      ["linkedin", null],
+      ["tg", "https://t.me/alexfoxiii"],
+      ["mydesignchannel", "https://t.me/mydesignpublic"]
     ]
   }
 };

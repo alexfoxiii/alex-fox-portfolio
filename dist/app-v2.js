@@ -23,7 +23,7 @@
     if (!panel || window.matchMedia("(max-width: 850px)").matches) return;
     const copy = panel.querySelector(".project-panel-copy");
     const hint = panel.querySelector(".project-scroll-hint");
-    const summary = copy.querySelector(".project-panel-summary") || copy.querySelector("h2");
+    const summary = copy.querySelector(".project-more") || copy.querySelector(".project-panel-summary") || copy.querySelector("h2");
     const summaryHeight = summary.getBoundingClientRect().bottom - copy.getBoundingClientRect().top + copy.scrollTop;
     const copyTop = copy.offsetTop;
     const navBottom = panel.querySelector(".project-panel-nav").getBoundingClientRect().bottom - panel.getBoundingClientRect().top;
@@ -37,6 +37,7 @@
   function stackMetrics(grid) {
     if (!grid) return;
     grid.classList.remove("metrics-stacked");
+    grid.classList.add("metrics-measuring");
     // Count actual wrapped lines, excluding the final short line of a paragraph.
     const crowded = [...grid.querySelectorAll("p")].some((paragraph) => {
       const text = paragraph.firstChild;
@@ -52,6 +53,7 @@
       const counts = [...lines.values()].slice(0, -1);
       return counts.length > 1 && counts.reduce((sum, count) => sum + count, 0) / counts.length <= 5;
     });
+    grid.classList.remove("metrics-measuring");
     grid.classList.toggle("metrics-stacked", crowded);
   }
 
@@ -144,7 +146,7 @@
         </div>` : ""}
         <div class="project-panel-copy">
           ${panelCopy}
-          <div class="project-specs"><div><small>role</small><p>${escapeHtml(role)}</p></div><div><small>team</small><p>${team}</p></div></div>
+          <div class="project-specs"><div><small>role</small><p>${escapeHtml(role).replace(/\n/g, "<br>")}</p></div><div><small>team</small><p>${team}</p></div></div>
           ${achievements ? '<small class="achievements-label">achievements</small>' : ""}
           ${achievements}
         </div>
@@ -461,48 +463,66 @@
     initSlider({ items: data.visualSlides, track: document.querySelector("[data-visual-track]"), prev: document.querySelector("[data-visual-prev]"), next: document.querySelector("[data-visual-next]"), count: document.querySelector("[data-visual-count]") });
     const mobileHomeProjects = document.querySelector("[data-mobile-home-projects]");
     if (mobileHomeProjects) {
-      let index = 0;
-      const renderMobileHomeProjects = () => {
-        const cards = data.projects.map((project, itemIndex) => {
-          const image = project.image ? `<img src="${escapeHtml(project.image)}?v=2" alt="${escapeHtml(project.title)} project visual">` : `<span class="mobile-home-card-placeholder">${escapeHtml(project.title)}</span>`;
-          const content = `<div class="mobile-home-card" data-project="${escapeHtml(project.slug)}" style="--project-color:${escapeHtml(project.color)};--panel-ink:${contrastInk(project.color)}">${image}<div class="mobile-home-card-copy"><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.role)} <i>·</i> ${escapeHtml(project.category)} <i>·</i> ${escapeHtml(project.year)}</small></div></div>`;
-          return `<div class="mobile-home-project ${itemIndex === index ? "is-active" : ""}">${project.href ? `<a href="${escapeHtml(project.href)}">${content}</a>` : content}</div>`;
-        }).join("");
-        mobileHomeProjects.innerHTML = `<div class="mobile-home-track">${cards}</div><div class="mobile-home-dots">${data.projects.map((_, itemIndex) => `<button type="button" class="${itemIndex === index ? "is-active" : ""}" data-mobile-home-dot="${itemIndex}" aria-label="Show ${escapeHtml(data.projects[itemIndex].title)}" aria-current="${itemIndex === index}"></button>`).join("")}</div>`;
+      let index = Math.max(0, data.projects.findIndex((project) => location.hash === `#project-${project.slug}`));
+      const render = () => {
+        mobileHomeProjects.innerHTML = mobileProjectMarkup(data.projects[index]);
+        initMobileCaseGallery(mobileHomeProjects);
       };
-      const hashProject = data.projects.findIndex((project) => location.hash === `#project-${project.slug}`);
-      if (hashProject >= 0) index = hashProject;
-      renderMobileHomeProjects();
-      const track = mobileHomeProjects.querySelector(".mobile-home-track");
-      const syncMobileHomeProject = () => {
-        if (track.clientWidth > 0) index = Math.max(0, Math.min(data.projects.length - 1, Math.round(track.scrollLeft / track.clientWidth)));
-        header.style.setProperty("--mobile-gallery-background", data.projects[index].color);
-        header.style.setProperty("--mobile-gallery-ink", contrastInk(data.projects[index].color));
-        mobileHomeProjects.style.setProperty("--mobile-dot-color", contrastInk(data.projects[index].color));
-        mobileHomeProjects.querySelectorAll(".mobile-home-project").forEach((card, itemIndex) => card.classList.toggle("is-active", itemIndex === index));
-        mobileHomeProjects.querySelectorAll("[data-mobile-home-dot]").forEach((button, itemIndex) => {
-          button.classList.toggle("is-active", itemIndex === index);
-          button.setAttribute("aria-current", String(itemIndex === index));
-        });
+      const select = () => {
+        const next = data.projects.findIndex((project) => location.hash === `#project-${project.slug}`);
+        if (next < 0) return;
+        index = next;
+        closeMobileMenu();
+        render();
+        if (matchMedia("(max-width: 850px)").matches) {
+          mobileHomeProjects.scrollIntoView({ block: "start", behavior: "instant" });
+          mobileHomeProjects.querySelector("h2").focus({ preventScroll: true });
+        }
       };
-      if (hashProject < 0) syncMobileHomeProject();
-      else {
-        header.style.setProperty("--mobile-gallery-background", data.projects[hashProject].color);
-        header.style.setProperty("--mobile-gallery-ink", contrastInk(data.projects[hashProject].color));
-        mobileHomeProjects.style.setProperty("--mobile-dot-color", contrastInk(data.projects[hashProject].color));
-      }
-      track.addEventListener("scroll", syncMobileHomeProject, { passive: true });
+      render();
       mobileHomeProjects.addEventListener("click", (event) => {
-        const dot = event.target.closest("[data-mobile-home-dot]");
-        if (dot) track.scrollTo({ left: Number(dot.dataset.mobileHomeDot) * track.clientWidth, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+        if (!event.target.closest("[data-next-project]")) return;
+        location.hash = `project-${data.projects[(index + 1) % data.projects.length].slug}`;
       });
-      window.addEventListener("resize", () => { track.scrollLeft = index * track.clientWidth; });
-      if (hashProject >= 0) window.requestAnimationFrame(() => {
-        track.scrollLeft = hashProject * track.clientWidth;
-        syncMobileHomeProject();
-        mobileHomeProjects.scrollIntoView({ block: "start", behavior: "instant" });
-      });
+      window.addEventListener("hashchange", select);
+      if (location.hash.startsWith("#project-")) requestAnimationFrame(select);
     }
+  }
+
+  function mobileProjectMarkup(project) {
+    const metrics = project.achievements || [];
+    const gallery = project.gallery || project.slides?.slice(1) || [];
+    const heading = page === "project" ? "h1" : "h2";
+    return `<article class="mobile-case" data-project="${escapeHtml(project.slug)}">
+      <div class="mobile-case-cover" style="--cover-color:${escapeHtml(project.color)};--cover-ink:${contrastInk(project.color)}">
+        ${project.image ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)} project cover">` : ""}
+        <${heading} tabindex="-1">${titleMarkup(project.caseTitle || project.title)}</${heading}>
+      </div>
+      <div class="mobile-case-copy">
+        <p class="mobile-case-summary">${escapeHtml(project.description)}</p>
+        <div class="case-details"><div><small>role</small><p>${escapeHtml(project.detailRole || project.role).replace(/\n/g, "<br>")}</p></div><div><small>team</small><p>${project.team?.map(escapeHtml).join("<br>") || "—"}</p></div></div>
+        ${metrics.length ? `<small class="metrics-label">achievements</small><div class="case-metrics">${metrics.map(([value, label]) => `<div><strong>${escapeHtml(value)}</strong><p>${escapeHtml(label).replace(/\n/g, "<br>")}</p></div>`).join("")}</div>` : ""}
+      </div>
+      ${gallery.length ? `<section class="mobile-case-gallery" aria-label="${escapeHtml(project.title)} images"><div class="mobile-case-images" tabindex="0" aria-label="Project image carousel">${gallery.map((src, i) => `<img src="${escapeHtml(src)}" loading="lazy" alt="${escapeHtml(project.title)} project detail ${i + 1}">`).join("")}</div><div class="mobile-case-pagination">${gallery.map((_, i) => `<button type="button" data-image-index="${i}" aria-label="Show image ${i + 1}" aria-current="${i === 0}"></button>`).join("")}</div></section>` : ""}
+      <nav class="mobile-case-actions" aria-label="Project navigation"><a href="#contacts">Contact me</a><button type="button" data-next-project>Next project &gt;</button></nav>
+    </article>`;
+  }
+
+  function initMobileCaseGallery(root) {
+    const track = root.querySelector(".mobile-case-images");
+    if (!track) return;
+    const buttons = [...root.querySelectorAll("[data-image-index]")];
+    const go = (index) => track.scrollTo({ left: Math.max(0, Math.min(buttons.length - 1, index)) * track.clientWidth, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    buttons.forEach((button, index) => button.addEventListener("click", () => go(index)));
+    track.addEventListener("scroll", () => {
+      const index = Math.round(track.scrollLeft / track.clientWidth);
+      buttons.forEach((button, i) => button.setAttribute("aria-current", String(i === index)));
+    }, { passive: true });
+    track.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      go(Math.round(track.scrollLeft / track.clientWidth) + (event.key === "ArrowRight" ? 1 : -1));
+    });
   }
 
   if (page === "about") {
@@ -517,11 +537,18 @@
     const nav = document.querySelector("[data-case-projects]");
     nav.innerHTML = projectNavMarkup(data.projects, "yandex", { includeMore: false });
     nav.querySelectorAll("button").forEach((button) => { button.disabled = button.dataset.projectName !== "yandex"; });
-    initSlider({ items: [{ src: "assets/yandex-gallery-1.png", alt: "Yandex Education interface overview" }, { src: "assets/yandex-gallery-2.png", alt: "Yandex Education lesson screen" }], track: document.querySelector("[data-gallery-track]"), prev: document.querySelector("[data-gallery-prev]"), next: document.querySelector("[data-gallery-next]"), dots: document.querySelector("[data-gallery-dots]") });
+    const yandex = data.projects.find((project) => project.slug === "yandex");
+    initSlider({ items: yandex.gallery.map((src, index) => ({ src, alt: `Yandex Education project detail ${index + 1}` })), track: document.querySelector("[data-gallery-track]"), prev: document.querySelector("[data-gallery-prev]"), next: document.querySelector("[data-gallery-next]"), dots: document.querySelector("[data-gallery-dots]") });
+    const mobileCase = document.createElement("div");
+    mobileCase.className = "mobile-case-page";
+    mobileCase.innerHTML = mobileProjectMarkup(yandex);
+    document.querySelector("main").prepend(mobileCase);
+    initMobileCaseGallery(mobileCase);
+    mobileCase.querySelector("[data-next-project]").addEventListener("click", () => { location.href = "index.html#project-everypin"; });
   }
   const refreshLayout = () => {
     document.querySelectorAll("[data-project-stack]").forEach(layoutProject);
-    stackMetrics(document.querySelector(".case-metrics"));
+    if (window.innerWidth > 850) stackMetrics(document.querySelector(".case-overview .case-metrics"));
     const logo = document.querySelector(".hero .brand-mark");
     const copy = document.querySelector(".hero-copy");
     if (logo && copy && window.innerWidth > 850) {

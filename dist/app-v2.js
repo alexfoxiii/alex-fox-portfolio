@@ -51,7 +51,7 @@
         lines.set(top, (lines.get(top) || 0) + 1);
       }
       const counts = [...lines.values()].slice(0, -1);
-      return counts.length > 1 && counts.reduce((sum, count) => sum + count, 0) / counts.length <= 5;
+      return counts.length > 1 && counts.reduce((sum, count) => sum + count, 0) / counts.length < 3;
     });
     grid.classList.remove("metrics-measuring");
     grid.classList.toggle("metrics-stacked", crowded);
@@ -140,6 +140,7 @@
         <div class="project-panel-nav-wrap">
           <nav class="project-nav project-panel-nav" aria-label="Projects">${projectNavMarkup(navItems, project.slug, { includeMore: false, selectable: true })}</nav>
           <p class="project-scroll-hint">${context === "projects" ? "click or scroll<br>to switch project" : "click to switch project"}</p>
+          ${context === "projects" ? '<button class="project-autoplay-toggle" type="button" data-project-autoplay aria-label="Pause automatic project switching" aria-pressed="false">pause</button>' : ""}
         </div>
         ${context === "projects" ? `<div class="project-filters" aria-label="Filter projects">
           ${["all", "branding", "ux/ui"].map((tag) => `<button type="button" class="${tag === "all" ? "is-active" : ""}" aria-pressed="${tag === "all"}" data-project-filter="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")}
@@ -164,7 +165,28 @@
     let filter = "all";
     let activeSlug = data.projects[0].slug;
     let visibleProjects = data.projects;
+    let autoplayPaused = false;
+    let pointerDownOnAutoplay = false;
+    let lastScrollAt = -Infinity;
+    let scrollResumeTimer;
     const projectStep = () => Math.max(220, window.innerHeight * 0.45);
+    const refreshAutoplay = () => {
+      if (context !== "projects") return;
+      const rect = root.getBoundingClientRect();
+      const visible = rect.top <= 0 && rect.bottom >= window.innerHeight;
+      const pointerOnContent = !!root.querySelector(".project-panel-copy:hover, .project-panel-nav-wrap:hover");
+      const eligible = window.innerWidth > 850 && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const running = eligible && visible && !document.hidden && !autoplayPaused && !pointerOnContent && performance.now() - lastScrollAt >= 5000;
+      root.classList.toggle("has-autoplay-progress", eligible);
+      root.classList.toggle("is-autoplaying", running);
+      root.classList.toggle("is-autoplay-paused", !running);
+      const toggle = root.querySelector("[data-project-autoplay]");
+      if (toggle) {
+        toggle.textContent = autoplayPaused ? "play" : "pause";
+        toggle.setAttribute("aria-pressed", String(autoplayPaused));
+        toggle.setAttribute("aria-label", autoplayPaused ? "Resume automatic project switching" : "Pause automatic project switching");
+      }
+    };
 
     const render = (isTransition = false) => {
       visibleProjects = filter === "all" ? data.projects : data.projects.filter((project) => project.tags.includes(filter));
@@ -193,6 +215,7 @@
         button.setAttribute("aria-pressed", String(active));
       });
       window.requestAnimationFrame(() => layoutProject(root));
+      refreshAutoplay();
     };
 
     const teleportToProject = (slug) => {
@@ -223,6 +246,12 @@
     };
 
     root.addEventListener("click", (event) => {
+      const autoplayButton = event.target.closest("[data-project-autoplay]");
+      if (autoplayButton) {
+        autoplayPaused = !autoplayPaused;
+        refreshAutoplay();
+        return;
+      }
       const projectButton = event.target.closest("[data-select-project]");
       if (projectButton) {
         event.preventDefault();
@@ -256,6 +285,28 @@
       }
     });
     render();
+    if (context === "projects") {
+      root.addEventListener("animationend", (event) => {
+        if (event.animationName !== "project-progress" || !root.classList.contains("is-autoplaying")) return;
+        const index = visibleProjects.findIndex((project) => project.slug === activeSlug);
+        activeSlug = visibleProjects[(index + 1) % visibleProjects.length].slug;
+        render(true);
+      });
+      root.addEventListener("pointerenter", refreshAutoplay);
+      root.addEventListener("pointerleave", refreshAutoplay);
+      root.addEventListener("pointerdown", (event) => {
+        pointerDownOnAutoplay = !!event.target.closest("[data-project-autoplay]");
+      });
+      root.addEventListener("pointerup", () => { pointerDownOnAutoplay = false; });
+      root.addEventListener("focusin", (event) => {
+        if (!event.target.closest("[data-project-autoplay]") || !pointerDownOnAutoplay) autoplayPaused = true;
+        refreshAutoplay();
+      });
+      document.addEventListener("visibilitychange", refreshAutoplay);
+      matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", refreshAutoplay);
+      window.addEventListener("blur", () => root.classList.add("is-autoplay-paused"));
+      window.addEventListener("focus", refreshAutoplay);
+    }
     root.addEventListener("wheel", (event) => {
       if (window.matchMedia("(max-width: 850px)").matches || event.ctrlKey) return;
       const panel = root.querySelector(".project-panel");
@@ -268,8 +319,14 @@
       }
     }, { passive: false });
     if (context === "projects") {
-      window.addEventListener("scroll", updateFromScroll, { passive: true });
-      window.addEventListener("resize", () => { render(); updateFromScroll(); });
+      window.addEventListener("scroll", () => {
+        lastScrollAt = performance.now();
+        updateFromScroll();
+        refreshAutoplay();
+        clearTimeout(scrollResumeTimer);
+        scrollResumeTimer = setTimeout(refreshAutoplay, 5000);
+      }, { passive: true });
+      window.addEventListener("resize", () => { render(); updateFromScroll(); refreshAutoplay(); });
     }
   });
   document.querySelectorAll(".contact-section").forEach((node) => { node.innerHTML = contactMarkup(node.classList.contains("project-contact")); });
@@ -278,29 +335,56 @@
   const mobileToggle = document.querySelector(".mobile-menu-toggle");
   const menuBackground = document.querySelector("main");
   const headerLinks = document.querySelectorAll(".site-header .header-link");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let menuMotion = null;
   const isolateMenu = (open) => {
     menuBackground.inert = open;
     headerLinks.forEach((link) => { link.inert = open; });
   };
-  const closeMobileMenu = (restoreFocus = false) => {
+  const setMobileMenu = (open, restoreFocus = false, immediate = false) => {
     if (!mobileMenu) return;
-    mobileMenu.hidden = true;
-    document.body.classList.remove("mobile-menu-open");
-    isolateMenu(false);
-    mobileToggle?.setAttribute("aria-expanded", "false");
-    mobileToggle?.setAttribute("aria-label", "Open menu");
-    if (restoreFocus) mobileToggle?.focus();
+    // Reverse from the visible opacity, including an unfinished close.
+    const from = mobileMenu.hidden ? 0 : Number(getComputedStyle(mobileMenu).opacity);
+    menuMotion?.cancel();
+    menuMotion = null;
+    mobileToggle?.setAttribute("aria-expanded", String(open));
+    mobileToggle?.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    if (open) {
+      mobileMenu.hidden = false;
+      document.body.classList.add("mobile-menu-open");
+      isolateMenu(true);
+      mobileMenu.querySelector(".mobile-menu-tab.is-active")?.focus({ preventScroll: true });
+    }
+    const finish = () => {
+      if (!open) {
+        mobileMenu.hidden = true;
+        document.body.classList.remove("mobile-menu-open");
+        isolateMenu(false);
+        if (restoreFocus) mobileToggle?.focus({ preventScroll: true });
+      }
+    };
+    const target = open ? 1 : 0;
+    if (immediate || reducedMotion.matches || from === target) {
+      finish();
+      return;
+    }
+    const animation = mobileMenu.animate([{ opacity: from }, { opacity: target }], {
+      duration: (open ? 280 : 200) * Math.abs(target - from),
+      easing: "cubic-bezier(.2, 0, 0, 1)",
+      fill: "both"
+    });
+    menuMotion = animation;
+    animation.onfinish = () => {
+      if (menuMotion !== animation) return;
+      finish();
+      menuMotion = null;
+      animation.cancel();
+    };
   };
-  const openMobileMenu = () => {
-    if (!mobileMenu) return;
-    mobileMenu.hidden = false;
-    document.body.classList.add("mobile-menu-open");
-    isolateMenu(true);
-    mobileToggle?.setAttribute("aria-expanded", "true");
-    mobileToggle?.setAttribute("aria-label", "Close menu");
-    mobileMenu.querySelector(".mobile-menu-tab.is-active")?.focus();
-  };
-  mobileToggle?.addEventListener("click", () => mobileMenu?.hidden ? openMobileMenu() : closeMobileMenu(true));
+  // Navigation and desktop resizing close immediately so their focus can move on.
+  const closeMobileMenu = (restoreFocus = false) => setMobileMenu(false, restoreFocus, !restoreFocus);
+  mobileToggle?.addEventListener("click", () => setMobileMenu(mobileToggle.getAttribute("aria-expanded") !== "true", true));
+  reducedMotion.addEventListener("change", () => { if (reducedMotion.matches) menuMotion?.finish(); });
   document.addEventListener("keydown", (event) => {
     if (mobileMenu?.hidden) return;
     if (event.key === "Escape") {
@@ -388,14 +472,11 @@
       const headerX = gutter;
       const headerY = 22;
       const centerX = (window.innerWidth - logoWidth) / 2;
-      const centerY = (window.innerHeight - logoHeight) / 2;
-      const homeProgress = Math.max(0, Math.min(1, window.scrollY / Math.min(240, window.innerHeight * 0.3)));
+      const centerY = 160;
       const contactProgress = Math.max(0, Math.min(1, (window.innerHeight * 0.4 - contact.getBoundingClientRect().top) / (window.innerHeight * 0.4)));
       const leaveHeader = contactProgress > 0 ? contactProgress : 0;
-      const fromX = centerX + (headerX - centerX) * homeProgress;
-      const fromY = centerY + (headerY - centerY) * homeProgress;
-      const x = fromX + (centerX - fromX) * leaveHeader;
-      const y = fromY + (centerY - fromY) * leaveHeader;
+      const x = headerX + (centerX - headerX) * leaveHeader;
+      const y = headerY + (centerY - headerY) * leaveHeader;
       header.dataset.mobileHomeLogo = "true";
       header.style.setProperty("--mobile-logo-x", `${x}px`);
       header.style.setProperty("--mobile-logo-y", `${y}px`);
@@ -464,47 +545,83 @@
     initSlider({ items: data.visualSlides, track: document.querySelector("[data-visual-track]"), prev: document.querySelector("[data-visual-prev]"), next: document.querySelector("[data-visual-next]"), count: document.querySelector("[data-visual-count]") });
     const mobileHomeProjects = document.querySelector("[data-mobile-home-projects]");
     if (mobileHomeProjects) {
-      let index = Math.max(0, data.projects.findIndex((project) => location.hash === `#project-${project.slug}`));
-      const render = () => {
-        mobileHomeProjects.innerHTML = mobileProjectMarkup(data.projects[index]);
-        initMobileCaseGallery(mobileHomeProjects);
+      const catalog = document.querySelector("[data-mobile-project-catalog]");
+      const carouselProject = data.projects.find((project) => project.slug === data.visualProjectSlug);
+      const slides = data.visualSlides;
+      let slideIndex = 0;
+      let activeProject = null;
+      const renderCarousel = () => {
+        mobileHomeProjects.innerHTML = `<div class="mobile-feature-carousel"><div class="mobile-feature-track" role="region" aria-roledescription="carousel" tabindex="0" aria-label="Selected project carousel">${slides.map((slide, index) => `<div class="mobile-feature-slide" aria-hidden="${index !== slideIndex}"><img src="${escapeHtml(slide.src)}" alt="${escapeHtml(slide.alt)}"></div>`).join("")}</div><div class="mobile-feature-caption"><a href="index.html#project-${escapeHtml(carouselProject.slug)}">${escapeHtml(carouselProject.caseTitle || carouselProject.title)}</a><p>${escapeHtml(carouselProject.role)} <span>·</span> ${escapeHtml(carouselProject.category)} <span>·</span> ${escapeHtml(carouselProject.year)}</p></div><div class="mobile-feature-dots">${slides.map((_, index) => `<button type="button" data-feature-slide="${index}" aria-label="Show slide ${index + 1}" aria-current="${index === slideIndex}"></button>`).join("")}</div></div>`;
+        const track = mobileHomeProjects.querySelector(".mobile-feature-track");
+        track.scrollLeft = slideIndex * track.clientWidth;
+        track.addEventListener("scroll", () => {
+          slideIndex = Math.round(track.scrollLeft / track.clientWidth);
+          mobileHomeProjects.querySelectorAll("[data-feature-slide]").forEach((button, index) => button.setAttribute("aria-current", String(index === slideIndex)));
+          mobileHomeProjects.querySelectorAll(".mobile-feature-slide").forEach((slide, index) => slide.setAttribute("aria-hidden", String(index !== slideIndex)));
+        }, { passive: true });
+        track.addEventListener("keydown", (event) => {
+          if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+          event.preventDefault();
+          const next = Math.max(0, Math.min(slides.length - 1, slideIndex + (event.key === "ArrowRight" ? 1 : -1)));
+          track.scrollTo({ left: next * track.clientWidth, behavior: "smooth" });
+        });
+      };
+      const renderCatalog = () => {
+        if (!catalog) return;
+        catalog.innerHTML = `<div class="mobile-catalog-list">${data.projects.map((project) => `<a href="${project.href || `index.html#project-${project.slug}`}" data-catalog-project="${escapeHtml(project.slug)}">${escapeHtml(project.title)}</a>`).join("")}</div><div class="mobile-catalog-filters">${["all", "branding", "ux/ui"].map((tag) => `<button type="button" data-catalog-filter="${tag}" aria-pressed="${tag === "all"}">${tag}</button>`).join("")}</div>`;
       };
       const select = () => {
-        const next = data.projects.findIndex((project) => location.hash === `#project-${project.slug}`);
-        if (next < 0) return;
-        index = next;
+        const project = data.projects.find((item) => location.hash === `#project-${item.slug}`);
+        activeProject = project || null;
+        if (!project) {
+          renderCarousel();
+          if (catalog) catalog.hidden = false;
+          return;
+        }
         closeMobileMenu();
-        render();
+        mobileHomeProjects.innerHTML = mobileProjectMarkup(project);
+        initMobileCaseGallery(mobileHomeProjects);
+        if (catalog) catalog.hidden = true;
         if (matchMedia("(max-width: 850px)").matches) {
           mobileHomeProjects.scrollIntoView({ block: "start", behavior: "instant" });
           mobileHomeProjects.querySelector("h2").focus({ preventScroll: true });
         }
       };
-      render();
+      renderCatalog();
+      select();
       mobileHomeProjects.addEventListener("click", (event) => {
-        if (!event.target.closest("[data-next-project]")) return;
-        location.hash = `project-${data.projects[(index + 1) % data.projects.length].slug}`;
+        const dot = event.target.closest("[data-feature-slide]");
+        if (dot) mobileHomeProjects.querySelector(".mobile-feature-track")?.scrollTo({ left: Number(dot.dataset.featureSlide) * mobileHomeProjects.querySelector(".mobile-feature-track").clientWidth, behavior: "smooth" });
+        if (event.target.closest("[data-next-project]") && activeProject) {
+          const index = data.projects.indexOf(activeProject);
+          location.hash = `project-${data.projects[(index + 1) % data.projects.length].slug}`;
+        }
+      });
+      catalog?.addEventListener("click", (event) => {
+        const filterButton = event.target.closest("[data-catalog-filter]");
+        if (!filterButton) return;
+        const filter = filterButton.dataset.catalogFilter;
+        catalog.querySelectorAll("[data-catalog-filter]").forEach((button) => button.setAttribute("aria-pressed", String(button === filterButton)));
+        catalog.querySelectorAll("[data-catalog-project]").forEach((link) => {
+          const project = data.projects.find((item) => item.slug === link.dataset.catalogProject);
+          link.hidden = filter !== "all" && !project.tags.includes(filter);
+        });
       });
       window.addEventListener("hashchange", select);
-      if (location.hash.startsWith("#project-")) requestAnimationFrame(select);
     }
   }
 
   function mobileProjectMarkup(project) {
     const metrics = project.achievements || [];
-    const gallery = project.gallery || project.slides?.slice(1) || [];
+    const gallery = [...new Set([project.image, ...(project.gallery || project.slides?.slice(1) || [])].filter(Boolean))];
     const heading = page === "project" ? "h1" : "h2";
     return `<article class="mobile-case" data-project="${escapeHtml(project.slug)}">
-      <div class="mobile-case-cover" style="--cover-color:${escapeHtml(project.color)};--cover-ink:${contrastInk(project.color)}">
-        ${project.image ? `<img src="${escapeHtml(project.image)}" alt="${escapeHtml(project.title)} project cover">` : ""}
-        <${heading} tabindex="-1">${titleMarkup(project.caseTitle || project.title)}</${heading}>
-      </div>
+      <section class="mobile-case-gallery" aria-label="${escapeHtml(project.title)} images"><div class="mobile-case-cover" style="--cover-color:${escapeHtml(project.color)};--cover-ink:${contrastInk(project.color)}"><div class="mobile-case-images" role="region" aria-roledescription="carousel" tabindex="0" aria-label="Project image carousel">${gallery.map((src, i) => `<img src="${escapeHtml(src)}" loading="${i === 0 ? "eager" : "lazy"}" alt="${escapeHtml(project.title)} project ${i === 0 ? "cover" : `detail ${i}`}" />`).join("")}</div><${heading} tabindex="-1">${titleMarkup(project.caseTitle || project.title)}</${heading}></div>${gallery.length > 1 ? `<div class="mobile-case-pagination">${gallery.map((_, i) => `<button type="button" data-image-index="${i}" aria-label="Show image ${i + 1}" aria-current="${i === 0}"></button>`).join("")}</div>` : ""}</section>
       <div class="mobile-case-copy">
-        <p class="mobile-case-summary">${escapeHtml(project.description)}</p>
+        <p class="mobile-case-summary">${escapeHtml(project.caseDescription || project.description)}</p>
         <div class="case-details"><div><small>role</small><p>${escapeHtml(project.detailRole || project.role).replace(/\n/g, "<br>")}</p></div><div><small>team</small><p>${project.team?.map(escapeHtml).join("<br>") || "—"}</p></div></div>
         ${metrics.length ? `<small class="metrics-label">achievements</small><div class="case-metrics">${metrics.map(([value, label]) => `<div><strong>${escapeHtml(value)}</strong><p>${escapeHtml(label).replace(/\n/g, "<br>")}</p></div>`).join("")}</div>` : ""}
       </div>
-      ${gallery.length ? `<section class="mobile-case-gallery" aria-label="${escapeHtml(project.title)} images"><div class="mobile-case-images" tabindex="0" aria-label="Project image carousel">${gallery.map((src, i) => `<img src="${escapeHtml(src)}" loading="lazy" alt="${escapeHtml(project.title)} project detail ${i + 1}">`).join("")}</div><div class="mobile-case-pagination">${gallery.map((_, i) => `<button type="button" data-image-index="${i}" aria-label="Show image ${i + 1}" aria-current="${i === 0}"></button>`).join("")}</div></section>` : ""}
       <nav class="mobile-case-actions" aria-label="Project navigation"><a href="#contacts">Contact me</a><button type="button" data-next-project>Next project &gt;</button></nav>
     </article>`;
   }

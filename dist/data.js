@@ -4,7 +4,6 @@ window.PORTFOLIO_DATA = {
   visualProjectSlug: "samolet",
   visualSlides: [
     { src: "assets/samolet-cover.png", alt: "Samoletum campaign poster" },
-    { src: "assets/samolet-detail-1.png", alt: "Samoletum campaign detail" },
     { src: "assets/samolet-detail-2.png", alt: "Samoletum campaign chess-piece detail" }
   ],
   projects: [
@@ -18,6 +17,7 @@ window.PORTFOLIO_DATA = {
       detailRole: "Senior UX/UI\nDesigner",
       team: ["Designer", "Illustrator"],
       description: "A major product update during crisis and a company-wide restructuring.",
+      caseDescription: "Led a major product update during crisis and a company-wide restructuring. Reducing an estimated 12-month delivery cycle to 3 months.",
       descriptionLines: ["A major product update", "during crisis and a company-", "wide restructuring."],
       color: "#ffcc00",
       image: "assets/yandex-cover.png",
@@ -89,7 +89,7 @@ window.PORTFOLIO_DATA = {
       description: "A broad visual system for an education product, designed to remain bright, direct and recognisable across formats.",
       color: "#117df5",
       image: "assets/samolet-cover.png",
-      slides: ["assets/samolet-cover.png", "assets/samolet-detail-1.png", "assets/samolet-detail-2.png"],
+      slides: ["assets/samolet-cover.png", "assets/samolet-detail-2.png"],
       imageFit: "contain",
       href: null,
       tags: ["branding"]

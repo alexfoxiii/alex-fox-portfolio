@@ -31,11 +31,18 @@ async function swipe(page, locator, direction) {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path}: overflow at ${width}`);
         assert.equal(await page.locator('img').evaluateAll(images => images.some(img => !img.hasAttribute('alt'))), false);
       }
+      if (mobile) {
+        await page.goto(`${base}/index.html`);
+        await page.waitForLoadState('networkidle');
+        assert.equal(await page.locator('.mobile-feature-carousel').count(), 1, 'home should show a standalone carousel');
+        assert.equal(await page.locator('.mobile-home-catalog:not([hidden])').count(), 1, 'home should show the project catalog');
+        assert.equal(await page.locator('.mobile-case').count(), 0, 'home should not show a full case before selection');
+      }
       await page.goto(`${base}/index.html#project-yandex`);
       await page.waitForLoadState('networkidle');
       if (mobile) {
         const track = page.locator('.mobile-case-images');
-        assert.equal(await track.locator('img').count(), 3);
+        assert.equal(await track.locator('img').count(), 4);
         await swipe(page, track, -1);
         await page.waitForFunction(() => document.querySelector('[data-image-index="1"]').getAttribute('aria-current') === 'true');
         await page.waitForTimeout(500);
